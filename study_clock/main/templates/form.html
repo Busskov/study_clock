@@ -1,0 +1,18 @@
+<html>
+<body>
+   <form action="../adduser/" method="post">
+      {% csrf_token %}
+      <p><label for="login">Login: </label>
+      <input id="login" type="text" name="login"></p>
+      <p><label for="password">Password: </label>
+      <input id="password" type="text" name="password"></p>
+      <p><label for="email">Email: </label>
+      <input id="email" type="text" name="email"></p>
+      <p><label for="country">Country: </label>
+      <input id="country" type="text" name="country"></p>
+      <p><label for="date_of_birth">Date of birth: </label>
+      <input id="date_of_birth" type="date" name="date_of_birth"></p>
+      <input type="submit" value="OK">
+   </form>
+</body>
+</html>
