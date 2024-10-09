@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Таймер</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #74ebd5, #acb6e5);
+            margin: 0;
+        }
+        h1 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        #timer {
+            font-size: 48px;
+            margin-bottom: 20px;
+            padding: 20px;
+            border: 5px solid #333;
+            border-radius: 10px;
+            background-color: rgba(255, 255, 255, 0.8);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        input {
+            padding: 10px;
+            font-size: 16px;
+            margin-right: 10px;
+            border: 2px solid #333;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #333;
+            color: white;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #555;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Таймер</h1>
+    <div id="timer">00:00</div>
+    <input type="number" id="minutes" placeholder="Минуты" min="0" />
+    <button id="startButton">Запустить таймер</button>
+
+    <script>
+        let countdown;
+        const timerDisplay = document.getElementById('timer');
+
+        document.getElementById('startButton').addEventListener('click', function() {
+            const minutes = parseInt(document.getElementById('minutes').value);
+            if (isNaN(minutes) || minutes <= 0) {
+                alert('Пожалуйста, введите корректное количество минут.');
+                return;
+            }
+
+            clearInterval(countdown);
+            let timeLeft = minutes * 60;
+
+            countdown = setInterval(() => {
+                const minutesLeft = Math.floor(timeLeft / 60);
+                const secondsLeft = timeLeft % 60;
+
+                timerDisplay.textContent = ${String(minutesLeft).padStart(2, '0')}:${String(secondsLeft).padStart(2, '0')};
+
+                if (timeLeft <= 0) {
+                    clearInterval(countdown);
+                    alert('Время вышло!');
+                }
+
+                timeLeft--;
+            }, 1000);
+        });
+    </script>
