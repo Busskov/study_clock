@@ -1,28 +1,9 @@
-<!--<html>-->
-<!--<body>-->
-<!--   <form action="../adduser/" method="post">-->
-<!--      {% csrf_token %}-->
-<!--      <p><label for="login">Login: </label>-->
-<!--      <input id="login" type="text" name="login"></p>-->
-<!--      <p><label for="password">Password: </label>-->
-<!--      <input id="password" type="text" name="password"></p>-->
-<!--      <p><label for="email">Email: </label>-->
-<!--      <input id="email" type="text" name="email"></p>-->
-<!--      <p><label for="country">Country: </label>-->
-<!--      <input id="country" type="text" name="country"></p>-->
-<!--      <p><label for="date_of_birth">Date of birth: </label>-->
-<!--      <input id="date_of_birth" type="date" name="date_of_birth"></p>-->
-<!--      <input type="submit" value="OK">-->
-<!--   </form>-->
-<!--</body>-->
-<!--</html>-->
-
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Регистрация пользователя</title>
+    <title>Sign up</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -78,13 +59,13 @@
 
     <form action="../adduser/" method="post">
         {% csrf_token %}
-        <h2>Регистрация</h2>
+        <h2>Sign up</h2>
         <p>
-            <label for="login">Логин:</label>
+            <label for="login">Login:</label>
             <input id="login" type="text" name="login" required>
         </p>
         <p>
-            <label for="password">Пароль:</label>
+            <label for="password">Password:</label>
             <input id="password" type="text" name="password" required>
         </p>
         <p>
@@ -92,11 +73,11 @@
             <input id="email" type="text" name="email" required>
         </p>
         <p>
-            <label for="country">Страна:</label>
+            <label for="country">Country:</label>
             <input id="country" type="text" name="country" required>
         </p>
         <p>
-            <label for="date_of_birth">Дата рождения:</label>
+            <label for="date_of_birth">Date of birth:</label>
             <input id="date_of_birth" type="date" name="date_of_birth" required>
         </p>
         <input type="submit" value="OK">

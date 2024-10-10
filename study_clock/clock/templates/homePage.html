@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Таймер</title>
+    <title>Timer</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -52,10 +52,10 @@
 </head>
 <body>
 
-    <h1>Таймер</h1>
+    <h1>Timer</h1>
     <div id="timer">00:00</div>
-    <input type="number" id="minutes" placeholder="Минуты" min="0" />
-    <button id="startButton">Запустить таймер</button>
+    <input type="number" id="minutes" placeholder="Minutes" min="0" />
+    <button id="startButton">Start timer</button>
 
     <script>
         let countdown;
@@ -64,7 +64,7 @@
         document.getElementById('startButton').addEventListener('click', function() {
             const minutes = parseInt(document.getElementById('minutes').value);
             if (isNaN(minutes) || minutes <= 0) {
-                alert('Пожалуйста, введите корректное количество минут.');
+                alert('Please, enter the number of minutes to run.');
                 return;
             }
 
@@ -79,7 +79,7 @@
 
                 if (timeLeft <= 0) {
                     clearInterval(countdown);
-                    alert('Время вышло!');
+                    alert('Time is up!');
                 }
 
                 timeLeft--;
