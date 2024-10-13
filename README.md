@@ -1,2 +1,22 @@
 # Productivity Pulse
-This project aims to show capabilities of those marvellous people, known by their alies Halk, Flash, Superman and Catwoman
+`This project aims to show capabilities of those marvellous people, known by their alies Halk, Flash, Superman and Catwoman`
+
+Productivity Pulse - проект, создающийся с целью повысить эффективность обучения людей. Он основывается на методе помодоро: позволяет запускать таймер на 25 минут, а после его окончания предупредит о необходимости перерыва. Однако это не все возможности проекта.
+
+Продвинутые возможности таймера:
+- Создание личного кабинета для сохранения прогресса
+- Создание категорий, чтобы отслеживать время, проведенное за определенной задачей
+- Достижения, мотивирующие пользователя продолжать работу
+- Удобный формат вывода статистики за разные периоды
+
+Также _премиум_ пользователи будут иметь возможность запускать фоновую музыку
+
+# Стек технологий
+Productivity Pulse будет написан на _Python3_ с использованием фреймворка _Django_. Используемая база данных - _SQLite_.
+
+# Варианты использования
+![use_case_diagram](https://github.com/user-attachments/assets/6bd3f43e-fb19-4235-ae1b-44851dd1af17)
+
+# Схема БД
+![er_diagram](https://github.com/user-attachments/assets/2e9123e4-8d3a-47e6-b7b1-87497c01b98d)
+
