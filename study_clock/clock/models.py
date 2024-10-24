@@ -1,25 +1,48 @@
+from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django_countries.fields import CountryField
+from clock.managers import UserManager
 
-class User(models.Model):
-    login = models.CharField(max_length= 50, unique=True)
-    password_hash = models.CharField(max_length=100)
-    date_of_birth = models.DateField()
-    email = models.EmailField(unique=True)
-    country = models.CharField(max_length = 30)
-    is_premium = models.BooleanField()
+
+class User(AbstractUser):
+    username = models.CharField(max_length=150, unique=True, verbose_name='Username')
+    date_of_birth = models.DateField(verbose_name='Date of Birth')
+    email = models.EmailField(unique=True, verbose_name='Email Address')
+    country = CountryField(verbose_name='Country')
+    is_premium = models.BooleanField(default=False, verbose_name='Premium User')
+
+    objects = UserManager()
+    REQUIRED_FIELDS = ['email', 'date_of_birth', 'country']
 
     class Meta:
         db_table = 'user'
+        verbose_name = 'User'
+        verbose_name_plural = 'Users'
 
+    def __str__(self):
+        return self.username
 
 
 class Activity(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    name = models.CharField(max_length=50)
-    minutes_spent_today = models.IntegerField()
-    minutes_spent_this_week = models.IntegerField()
-    minutes_spent_this_month = models.IntegerField()
-    minutes_spent_in_total = models.IntegerField()
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='activities')
+    name = models.CharField(max_length=50, verbose_name='Activity Name')
+    minutes_spent_today = models.PositiveIntegerField(default=0, verbose_name='Minutes Spent Today')
+    minutes_spent_this_week = models.PositiveIntegerField(default=0, verbose_name='Minutes Spent This Week')
+    minutes_spent_this_month = models.PositiveIntegerField(default=0, verbose_name='Minutes Spent This Month')
+    minutes_spent_in_total = models.PositiveIntegerField(default=0, verbose_name='Minutes Spent in Total')
 
     class Meta:
         db_table = 'activity'
+        verbose_name = 'Activity'
+        verbose_name_plural = 'Activities'
+
+    def __str__(self):
+        return f'{self.name} - {self.user.username}'
+
+    def add_time(self, minutes):
+        self.minutes_spent_today += minutes
+        self.minutes_spent_this_week += minutes
+        self.minutes_spent_this_month += minutes
+        self.minutes_spent_in_total += minutes
+        self.save()
+

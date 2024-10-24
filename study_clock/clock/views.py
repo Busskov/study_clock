@@ -1,13 +1,17 @@
 from django.shortcuts import render, HttpResponse, redirect
 
-from clock.UserManager import UserManager
+from clock.models import UserManager
+from django.forms import ModelForm
 from clock.models import User
 
 # Create your views here.
 import time
 
 def homePageRedirect(request):
-    return redirect(homePage)
+    return redirect('index')
+
+    # return redirect(request)
+
     # manager = UserManager()
     # #manager.deleteUser(2)
     # return HttpResponse('Clock is about to be here soon...<br>'
@@ -21,12 +25,14 @@ def homePage(request):
     # print("hello, this is ", user.login)
     # return HttpResponse('Clock is about to be here soon...\n'
     #                     'In the meantime, you may think about buying a premium subscription to encourage further development')
+    # new_user = User.objects.create_user(username='username', email='email', date_of_birth='2021-10-10', country='country', password='password')
+    print(User.objects.get(username='username').date_of_birth)
     return render(request, 'homePage.html')
 
 
 def adduser(request):
    if request.method == "POST":
       user_manager = UserManager()
-      user_manager.addUser(request=request)
+      user_manager.add_user(request=request)
       return HttpResponse("<h2>Record Added Successfully</h2>")
    return render(request, "addUserForm.html")
