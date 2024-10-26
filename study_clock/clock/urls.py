@@ -5,12 +5,11 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView
 )
 
-from .protected_view import ProtectedView
-from .register_view import RegisterView
+from .views import ProtectedView
+from .views import RegisterView
 
 urlpatterns = [
     path("", views.homePageRedirect, name="redirect"),
-    path('clock/adduser/', views.adduser, name="adduser"),
     path('clock/', views.homePage, name="index"),
     path('clock/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('clock/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

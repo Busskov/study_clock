@@ -2,6 +2,9 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django_countries.fields import CountryField
 from clock.managers import UserManager
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class User(AbstractUser):
@@ -40,9 +43,11 @@ class Activity(models.Model):
         return f'{self.name} - {self.user.username}'
 
     def add_time(self, minutes):
+        logger.debug('Adding time for activity %s: %d minutes', self.name, minutes)
         self.minutes_spent_today += minutes
         self.minutes_spent_this_week += minutes
         self.minutes_spent_this_month += minutes
         self.minutes_spent_in_total += minutes
         self.save()
+        logger.info('Time added for activity %s. Today is time: %d minutes', self.name, self.minutes_spent_today)
 

@@ -1,38 +1,41 @@
-from django.shortcuts import render, HttpResponse, redirect
+from django.shortcuts import render, redirect
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.response import Response
+from rest_framework.status import HTTP_201_CREATED
+from rest_framework.views import APIView
+from clock.register_serializer import RegisterSerializer
+import logging
 
-from clock.models import UserManager
-from django.forms import ModelForm
-from clock.models import User
+logger = logging.getLogger(__name__)
 
-# Create your views here.
-import time
 
 def homePageRedirect(request):
+    logger.info('Redirecting to the main page')
     return redirect('index')
 
-    # return redirect(request)
-
-    # manager = UserManager()
-    # #manager.deleteUser(2)
-    # return HttpResponse('Clock is about to be here soon...<br>'
-    #                     'In the meantime, you may think about buying a '
-    #                     'premium subscription to encourage further '
-    #                     'development <br>' + str(User.objects.exists()) + '<br>' + str(len(User.objects.all())))
 
 def homePage(request):
-    # user = User(login="BolTss", password_hash="hash", date_of_birth ="15/10/2004", email="bol@gmail.com",
-    #             country="by", is_premium=False)
-    # print("hello, this is ", user.login)
-    # return HttpResponse('Clock is about to be here soon...\n'
-    #                     'In the meantime, you may think about buying a premium subscription to encourage further development')
-    # new_user = User.objects.create_user(username='username', email='email', date_of_birth='2021-10-10', country='country', password='password')
-    print(User.objects.get(username='username').date_of_birth)
+    logger.debug('Displaying the main page')
     return render(request, 'homePage.html')
 
 
-def adduser(request):
-   if request.method == "POST":
-      user_manager = UserManager()
-      user_manager.add_user(request=request)
-      return HttpResponse("<h2>Record Added Successfully</h2>")
-   return render(request, "addUserForm.html")
+class RegisterView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        logger.debug('Attempt to register a new user')
+        serializer = RegisterSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            logger.info('The user has been created: %s', user.username)
+            return Response({'message': 'User created successfully', 'user_id': user.id}, status=HTTP_201_CREATED)
+        logger.warning('Error when creating a user: %s', serializer.errors)
+        return Response(serializer.errors, status=400)
+
+
+class ProtectedView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        logger.debug('Request to a protected view')
+        return Response({'message': 'This is a protected view'}, status=200)
