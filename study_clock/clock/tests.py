@@ -3,7 +3,7 @@ from django.db import IntegrityError
 from django.test import TestCase
 from .models import User, Activity
 from rest_framework.test import APITestCase, APIClient
-from .register_serializer import RegisterSerializer
+from .serializers import RegisterSerializer
 from django.urls import reverse, resolve
 from rest_framework import status
 from .views import RegisterView, ProtectedView

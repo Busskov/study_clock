@@ -1,5 +1,4 @@
 from rest_framework import serializers
-
 from clock.models import User
 
 
@@ -18,3 +17,11 @@ class RegisterSerializer(serializers.ModelSerializer):
             country=validated_data['country']
         )
         return user
+
+
+class MessageSerializer(serializers.Serializer):
+    message = serializers.CharField()
+
+
+class ErrorSerializer(serializers.Serializer):
+    detail = serializers.CharField()
