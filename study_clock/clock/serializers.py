@@ -5,7 +5,7 @@ from clock.models import User
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('username', 'email', 'password', 'date_of_birth', 'country')
+        fields = ('username', 'email', 'password', 'date_of_birth', 'country', 'avatar')
         extra_kwargs = {'password': {'write_only': True}}
 
     def create(self, validated_data):
@@ -14,7 +14,8 @@ class RegisterSerializer(serializers.ModelSerializer):
             email=validated_data['email'],
             password=validated_data['password'],
             date_of_birth=validated_data['date_of_birth'],
-            country=validated_data['country']
+            country=validated_data['country'],
+            avatar=validated_data.get('avatar', None)
         )
         return user
 

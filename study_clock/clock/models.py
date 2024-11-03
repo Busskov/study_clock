@@ -13,6 +13,7 @@ class User(AbstractUser):
     email = models.EmailField(unique=True, verbose_name='Email Address')
     country = CountryField(verbose_name='Country')
     is_premium = models.BooleanField(default=False, verbose_name='Premium User')
+    avatar = models.ImageField(upload_to='avatars/', null=True, blank=True, verbose_name='Avatar')
 
     objects = UserManager()
     REQUIRED_FIELDS = ['email', 'date_of_birth', 'country']

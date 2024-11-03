@@ -1,5 +1,6 @@
 import logging
-from django.db import IntegrityError
+from django.db import IntegrityError, models
+from django.db.models import F, ExpressionWrapper, fields
 from django.test import TestCase
 from .models import User, Activity
 from rest_framework.test import APITestCase, APIClient
@@ -7,6 +8,10 @@ from .serializers import RegisterSerializer
 from django.urls import reverse, resolve
 from rest_framework import status
 from .views import RegisterView, ProtectedView
+import random
+from datetime import datetime, timedelta
+from django.db import transaction
+from concurrent.futures import ThreadPoolExecutor
 
 logger = logging.getLogger(__name__)
 
@@ -281,3 +286,151 @@ class URLRoutingTest(TestCase):
         url = reverse('protected_view')
         self.assertEqual(resolve(url).func.view_class, ProtectedView)
         logger.info("test_protected_view_url_resolves passed")
+
+
+class LargeDatabaseTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        logger.info("Setting up LargeDatabaseTest with 10,000 users...")
+        # num_users = 10000
+        users = [
+            User(
+                username=f'user_{i}',
+                email=f'user_{i}@example.com',
+                password='password123',
+                date_of_birth=(datetime.now() - timedelta(days=random.randint(7000, 15000))).date(),
+                country='US'
+            )
+            for i in range(0, 10000)
+        ]
+        User.objects.bulk_create(users)
+        # for i in range(num_users):
+        #     User.objects.create_user(
+        #         username=f'user_{i}',
+        #         email=f'user_{i}@example.com',
+        #         password='password123',
+        #         date_of_birth=(datetime.now() - timedelta(days=random.randint(7000, 15000))).date(),
+        #         country='US'
+        #     )
+        logger.info("10,000 users created successfully.")
+
+    def test_large_database_user_count(self):
+        logger.info("Starting test_large_database_user_count")
+        user_count = User.objects.count()
+        self.assertEqual(user_count, 10000)
+        logger.info("test_large_database_user_count passed")
+
+    def test_query_performance(self):
+        logger.info("Starting test_query_performance")
+        with self.assertNumQueries(1):
+            user = User.objects.get(username='user_5000')
+            self.assertEqual(user.email, 'user_5000@example.com')
+        logger.info("test_query_performance passed")
+
+    def test_bulk_create_users(self):
+        logger.info("Starting test_bulk_create_users")
+        additional_users = [
+            User(
+                username=f'new_user_{i}',
+                email=f'new_user_{i}@example.com',
+                password='password123',
+                date_of_birth=(datetime.now() - timedelta(days=random.randint(7000, 15000))).date(),
+                country='CA'
+            )
+            for i in range(10001, 11001)
+        ]
+        User.objects.bulk_create(additional_users)
+        user_count = User.objects.count()
+        self.assertEqual(user_count, 11000)
+        logger.info("test_bulk_create_users passed")
+
+    def test_large_dataset_retrieval(self):
+        logger.info("Starting test_large_dataset_retrieval")
+        start_time = datetime.now()
+        users = User.objects.all()[:1000]
+        self.assertEqual(len(users), 1000)
+        elapsed_time = datetime.now() - start_time
+        logger.info(f"Retrieved 1,000 users in {elapsed_time.total_seconds()} seconds")
+        self.assertLess(elapsed_time.total_seconds(), 1, "Query took too long")
+        logger.info("test_large_dataset_retrieval passed")
+
+    def test_aggregate_query_performance(self):
+        logger.info("Starting test_aggregate_query_performance")
+        start_time = datetime.now()
+        avg_age = User.objects.annotate(
+            age=ExpressionWrapper(
+                datetime.now().date() - F('date_of_birth'),
+                output_field=fields.DurationField()
+            )
+        ).aggregate(average_age=models.Avg('age'))
+        elapsed_time = datetime.now() - start_time
+        logger.info(f"Average age computed in {elapsed_time.total_seconds()} seconds")
+        self.assertLess(elapsed_time.total_seconds(), 2, "Aggregation query took too long")
+        logger.info("test_aggregate_query_performance passed")
+
+    def test_bulk_delete_users(self):
+        logger.info("Starting test_bulk_delete_users")
+        start_time = datetime.now()
+        User.objects.filter(username__startswith='user_').delete()
+        elapsed_time = datetime.now() - start_time
+        user_count = User.objects.count()
+        self.assertEqual(user_count, 0)
+        logger.info(f"Bulk deletion completed in {elapsed_time.total_seconds()} seconds")
+        logger.info("test_bulk_delete_users passed")
+
+    def test_transaction_handling(self):
+        logger.info("Starting test_transaction_handling")
+        try:
+            with transaction.atomic():
+                new_users = [
+                    User(
+                        username=f'transaction_user_{i}',
+                        email=f'transaction_user_{i}@example.com',
+                        password='password123',
+                        date_of_birth=(datetime.now() - timedelta(days=random.randint(7000, 15000))).date(),
+                        country='US'
+                    )
+                    for i in range(11001, 12001)
+                ]
+                User.objects.bulk_create(new_users)
+                raise Exception("Intentional exception to test rollback")
+        except Exception as e:
+            logger.info(f"Transaction rolled back due to: {e}")
+
+        user_count = User.objects.filter(username__startswith='transaction_user_').count()
+        self.assertEqual(user_count, 0)
+        logger.info("test_transaction_handling passed")
+
+    def test_indexed_query_performance(self):
+        logger.info("Starting test_indexed_query_performance")
+        start_time = datetime.now()
+        user = User.objects.filter(email='user_5000@example.com').first()
+        elapsed_time = datetime.now() - start_time
+        logger.info(f"Indexed query completed in {elapsed_time.total_seconds()} seconds")
+        self.assertIsNotNone(user)
+        self.assertLess(elapsed_time.total_seconds(), 0.5, "Indexed query took too long")
+        logger.info("test_indexed_query_performance passed")
+
+    def test_bulk_update_integrity(self):
+        logger.info("Starting test_bulk_update_integrity")
+        updated_count = User.objects.filter(username__startswith='user_').update(country='UK')
+        self.assertEqual(updated_count, 10000)
+        updated_users = User.objects.filter(country='UK').count()
+        self.assertEqual(updated_users, 10000)
+        logger.info("test_bulk_update_integrity passed")
+
+    # THIS TEST DOES NOT WORK. but should it?
+
+    # def test_concurrent_queries(self):
+    #     logger.info("Starting test_concurrent_queries")
+    #
+    #     def query_user_by_username(username):
+    #         return User.objects.filter(username=username).first()
+    #
+    #     usernames = [f'user_{i}' for i in range(1000)]
+    #     with ThreadPoolExecutor(max_workers=10) as executor:
+    #         results = list(executor.map(query_user_by_username, usernames))
+    #
+    #     for user in results:
+    #         self.assertIsNotNone(user)
+    #     logger.info("test_concurrent_queries passed")
