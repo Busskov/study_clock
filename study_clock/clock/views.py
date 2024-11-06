@@ -21,6 +21,11 @@ def homePage(request):
     return render(request, 'homePage.html')
 
 
+def chat_view(request):
+    logger.debug('Displaying the chat page')
+    return render(request, 'chat.html', {'username': request.user.username})
+
+
 class RegisterView(APIView):
     permission_classes = [AllowAny]
 

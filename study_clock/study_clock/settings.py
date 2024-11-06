@@ -38,15 +38,29 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'channels',
     'clock',
     'rest_framework',
     'rest_framework_simplejwt',
     'drf_yasg',
 ]
 
+ASGI_APPLICATION = 'study_clock.asgi.application'
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [('127.0.0.1', 6379)],
+        },
+    },
+}
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.JSONRenderer',
     ),
 }
 
@@ -160,7 +174,7 @@ LOGGING = {
             'level': 'DEBUG',
             'class': 'concurrent_log_handler.ConcurrentRotatingFileHandler',
             'filename': BASE_DIR / 'logs/study_clock.log',
-            'maxBytes': 1024 * 100,
+            'maxBytes': 1024 * 1024 * 5,
             'backupCount': 5,
             'formatter': 'standard',
         },

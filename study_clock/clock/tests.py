@@ -11,7 +11,6 @@ from .views import RegisterView, ProtectedView
 import random
 from datetime import datetime, timedelta
 from django.db import transaction
-from concurrent.futures import ThreadPoolExecutor
 
 logger = logging.getLogger(__name__)
 
@@ -418,19 +417,3 @@ class LargeDatabaseTest(TestCase):
         updated_users = User.objects.filter(country='UK').count()
         self.assertEqual(updated_users, 10000)
         logger.info("test_bulk_update_integrity passed")
-
-    # THIS TEST DOES NOT WORK. but should it?
-
-    # def test_concurrent_queries(self):
-    #     logger.info("Starting test_concurrent_queries")
-    #
-    #     def query_user_by_username(username):
-    #         return User.objects.filter(username=username).first()
-    #
-    #     usernames = [f'user_{i}' for i in range(1000)]
-    #     with ThreadPoolExecutor(max_workers=10) as executor:
-    #         results = list(executor.map(query_user_by_username, usernames))
-    #
-    #     for user in results:
-    #         self.assertIsNotNone(user)
-    #     logger.info("test_concurrent_queries passed")
