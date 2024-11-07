@@ -12,7 +12,7 @@
 
     <script>
         const chatSocket = new WebSocket(
-            'ws://26.191.80.219:8000/ws/support/'
+            'ws://' + window.location.host + '/ws/support/'
         );
 
         chatSocket.onmessage = function(e) {
