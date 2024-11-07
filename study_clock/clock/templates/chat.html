@@ -30,7 +30,6 @@
             const message = messageInput.value;
             chatSocket.send(JSON.stringify({
                 'message': message,
-                'username': 'username'
             }));
             messageInput.value = '';
         };

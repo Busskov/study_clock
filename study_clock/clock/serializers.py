@@ -1,3 +1,4 @@
+from django.contrib.auth import authenticate
 from rest_framework import serializers
 from clock.models import User
 
@@ -26,3 +27,14 @@ class MessageSerializer(serializers.Serializer):
 
 class ErrorSerializer(serializers.Serializer):
     detail = serializers.CharField()
+
+
+class LoginSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    password = serializers.CharField()
+
+    def validate(self, data):
+        user = authenticate(username=data['username'], password=data['password'])
+        if user and user.is_active:
+            return user
+        raise serializers.ValidationError('Invalid username or password.')
