@@ -1,11 +1,15 @@
+from django.contrib.auth import authenticate, login
+from django.http import HttpResponse
 from django.shortcuts import render, redirect
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
+from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED
 from rest_framework.views import APIView
-from clock.serializers import RegisterSerializer, ErrorSerializer, MessageSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
+from clock.serializers import RegisterSerializer, ErrorSerializer, MessageSerializer, LoginSerializer
 import logging
 
 logger = logging.getLogger(__name__)
@@ -19,6 +23,26 @@ def homePageRedirect(request):
 def homePage(request):
     logger.debug('Displaying the main page')
     return render(request, 'homePage.html')
+
+
+def chat_view(request):
+    logger.debug('Displaying the chat page')
+    return render(request, 'chat.html')
+
+
+def login_page(request):
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+
+        user = authenticate(request, username=username, password=password)
+
+        if user is not None:
+            login(request, user)
+            return redirect('index')
+        else:
+            return HttpResponse("Invalid username or password")
+    return render(request, 'login.html')
 
 
 class RegisterView(APIView):
@@ -72,3 +96,35 @@ class ProtectedView(APIView):
     def get(self, request):
         logger.debug('Request to a protected view')
         return Response({'message': 'This is a protected view'}, status=200)
+
+
+class LoginView(APIView):
+    @swagger_auto_schema(
+        operation_description='Login a user and return a JWT token upon successful authentication',
+        request_body=LoginSerializer,
+        responses={
+            200: openapi.Response(
+                description='User authenticated successfully',
+                schema=LoginSerializer,
+                examples={'application/json': {'token': 'your_jwt_token'}},
+            ),
+            400: openapi.Response(
+                description='Invalid credentials',
+                schema=ErrorSerializer,
+                examples={'application/json': {'detail': 'Invalid username or password'}},
+            ),
+        },
+    )
+    def post(self, request):
+        logger.debug('Attempt to log in a user')
+        serializer = LoginSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.validated_data
+            refresh = RefreshToken.for_user(user)
+            logger.info('User logged in successfully: %s', user.username)
+            return Response({
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+            }, status=status.HTTP_200_OK)
+        logger.warning('Login failed for user: %s', request.data.get('username'))
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

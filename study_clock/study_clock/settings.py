@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-!k1#(+!90p#(=mf-yz!*6fd=7j+_-!y_k74@@misn0)iea_&3n
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '26.191.80.219', '26.124.9.217']
 
 # Application definition
 
@@ -38,11 +38,22 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'channels',
     'clock',
     'rest_framework',
     'rest_framework_simplejwt',
     'drf_yasg',
 ]
+
+ASGI_APPLICATION = 'study_clock.asgi.application'
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [('127.0.0.1', 6379)],
+        },
+    },
+}
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -160,7 +171,7 @@ LOGGING = {
             'level': 'DEBUG',
             'class': 'concurrent_log_handler.ConcurrentRotatingFileHandler',
             'filename': BASE_DIR / 'logs/study_clock.log',
-            'maxBytes': 1024 * 100,
+            'maxBytes': 1024 * 1024 * 5,
             'backupCount': 5,
             'formatter': 'standard',
         },
@@ -185,3 +196,6 @@ LOGGING = {
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/clock/login/'

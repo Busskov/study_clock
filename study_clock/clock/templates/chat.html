@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Support Chat</title>
+</head>
+<body>
+    <h2>Support Chat</h2>
+    <div id="chat-log"></div>
+    <input type="text" id="chat-message-input" placeholder="Type your message here...">
+    <button id="chat-message-submit">Send</button>
+
+    <script>
+        const chatSocket = new WebSocket(
+            'ws://' + window.location.host + '/ws/support/'
+        );
+
+        chatSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            const message = `<b>${data.username}</b>: ${data.message}<br>`;
+            document.querySelector('#chat-log').innerHTML += message;
+        };
+
+        chatSocket.onclose = function(e) {
+            console.error('Chat socket closed unexpectedly');
+        };
+
+        document.querySelector('#chat-message-submit').onclick = function(e) {
+            const messageInput = document.querySelector('#chat-message-input');
+            const message = messageInput.value;
+            chatSocket.send(JSON.stringify({
+                'message': message,
+            }));
+            messageInput.value = '';
+        };
+    </script>
+</body>
+</html>
