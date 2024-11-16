@@ -3,13 +3,15 @@ from django.http import HttpResponse
 from django.shortcuts import render, redirect
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
-from rest_framework import status
+from rest_framework import status, generics, viewsets, filters
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
-from clock.serializers import RegisterSerializer, ErrorSerializer, MessageSerializer, LoginSerializer
+from .serializers import RegisterSerializer, ErrorSerializer, MessageSerializer, LoginSerializer, UserSerializer
+from .permissions import IsAdmin
+from .models import User
 import logging
 
 logger = logging.getLogger(__name__)
@@ -72,7 +74,7 @@ class RegisterView(APIView):
             logger.info('The user has been created: %s', user.username)
             return Response({'message': 'User created successfully', 'user_id': user.id}, status=HTTP_201_CREATED)
         logger.warning('Error when creating a user: %s', serializer.errors)
-        return Response(serializer.errors, status=400)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ProtectedView(APIView):
@@ -99,6 +101,8 @@ class ProtectedView(APIView):
 
 
 class LoginView(APIView):
+    permission_classes = [AllowAny]
+
     @swagger_auto_schema(
         operation_description='Login a user and return a JWT token upon successful authentication',
         request_body=LoginSerializer,
@@ -127,4 +131,51 @@ class LoginView(APIView):
                 'access': str(refresh.access_token),
             }, status=status.HTTP_200_OK)
         logger.warning('Login failed for user: %s', request.data.get('username'))
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UserListCreateView(generics.ListCreateAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [AllowAny]
+
+
+class UserRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [AllowAny]
+
+
+class UserFilterViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [AllowAny]
+
+    filter_backends = (filters.OrderingFilter, filters.SearchFilter)
+    search_fields = ['username', 'email', 'country']
+    ordering_fields = ['username', 'date_of_birth', 'country']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        is_premium = self.request.query_params.get('is_premium', None)
+        if is_premium is not None:
+            queryset = queryset.filter(is_premium=is_premium)
+
+        return queryset
+
+
+class UserUpdateView(APIView):
+    permission_classes = [AllowAny]
+
+    def put(self, request, pk):
+        try:
+            user = User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            return Response({'detail': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = UserSerializer(user, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

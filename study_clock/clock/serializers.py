@@ -38,3 +38,17 @@ class LoginSerializer(serializers.Serializer):
         if user and user.is_active:
             return user
         raise serializers.ValidationError('Invalid username or password.')
+
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'date_of_birth', 'country', 'is_premium']
+
+    def update(self, instance, validated_data):
+        instance.username = validated_data.get('username', instance.username)
+        instance.email = validated_data.get('email', instance.email)
+        instance.date_of_birth = validated_data.get('date_of_birth', instance.date_of_birth)
+        instance.country = validated_data.get('country', instance.country)
+        instance.save()
+        return instance

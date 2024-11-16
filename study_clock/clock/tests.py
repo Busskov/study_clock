@@ -417,3 +417,48 @@ class LargeDatabaseTest(TestCase):
         updated_users = User.objects.filter(country='UK').count()
         self.assertEqual(updated_users, 10000)
         logger.info("test_bulk_update_integrity passed")
+
+
+class UserCRUDTests(APITestCase):
+    def setUp(self):
+        self.admin_user = User.objects.create_superuser(
+            username='admin', email='admin@example.com', password='adminpass', date_of_birth='1980-01-01', country='US')
+        self.client.force_authenticate(user=self.admin_user)
+
+    def test_create_user(self):
+        url = reverse('user-list')
+        data = {'username': 'testuser', 'email': 'testuser@example.com', 'password': 'password123',
+                'date_of_birth': '1990-01-01', 'country': 'US'}
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['username'], 'testuser')
+
+    def test_user_list(self):
+        url = reverse('user-list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreater(len(response.data), 0)
+
+    def test_user_filter_by_country(self):
+        url = reverse('user-list') + '?search=US'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        for user in response.data:
+            self.assertEqual(user['country'], 'US')
+
+    def test_user_update(self):
+        user = User.objects.create_user(username='user1', email='user1@example.com', password='password',
+                                        date_of_birth='2000-01-01', country='CA')
+        url = reverse('user-detail', args=[user.id])
+        data = {'username': 'user1_updated', 'email': 'user1_updated@example.com'}
+        response = self.client.put(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['username'], 'user1_updated')
+
+    def test_user_delete(self):
+        user = User.objects.create_user(username='user1', email='user1@example.com', password='password',
+                                        date_of_birth='2000-01-01', country='CA')
+        url = reverse('user-detail', args=[user.id])
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(User.objects.filter(id=user.id).exists())
