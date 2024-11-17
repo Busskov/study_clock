@@ -1,6 +1,7 @@
 from django.contrib.auth import authenticate
 from rest_framework import serializers
 from clock.models import User
+from clock.utils import send_email_confirmation
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -18,6 +19,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             country=validated_data['country'],
             avatar=validated_data.get('avatar', None)
         )
+        # send_email_confirmation(user=user)
         return user
 
 
@@ -45,10 +47,19 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'username', 'email', 'date_of_birth', 'country', 'is_premium']
 
-    def update(self, instance, validated_data):
-        instance.username = validated_data.get('username', instance.username)
-        instance.email = validated_data.get('email', instance.email)
-        instance.date_of_birth = validated_data.get('date_of_birth', instance.date_of_birth)
-        instance.country = validated_data.get('country', instance.country)
-        instance.save()
-        return instance
+
+class EmailUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['email']
+
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError('This email is already in use.')
+        return value
+
+
+class AvatarUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['avatar']

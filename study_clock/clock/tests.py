@@ -1,4 +1,7 @@
 import logging
+import uuid
+import random
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError, models
 from django.db.models import F, ExpressionWrapper, fields
 from django.test import TestCase
@@ -8,7 +11,6 @@ from .serializers import RegisterSerializer
 from django.urls import reverse, resolve
 from rest_framework import status
 from .views import RegisterView, ProtectedView
-import random
 from datetime import datetime, timedelta
 from django.db import transaction
 
@@ -291,7 +293,6 @@ class LargeDatabaseTest(TestCase):
     @classmethod
     def setUpTestData(cls):
         logger.info("Setting up LargeDatabaseTest with 10,000 users...")
-        # num_users = 10000
         users = [
             User(
                 username=f'user_{i}',
@@ -303,14 +304,6 @@ class LargeDatabaseTest(TestCase):
             for i in range(0, 10000)
         ]
         User.objects.bulk_create(users)
-        # for i in range(num_users):
-        #     User.objects.create_user(
-        #         username=f'user_{i}',
-        #         email=f'user_{i}@example.com',
-        #         password='password123',
-        #         date_of_birth=(datetime.now() - timedelta(days=random.randint(7000, 15000))).date(),
-        #         country='US'
-        #     )
         logger.info("10,000 users created successfully.")
 
     def test_large_database_user_count(self):
@@ -412,53 +405,177 @@ class LargeDatabaseTest(TestCase):
 
     def test_bulk_update_integrity(self):
         logger.info("Starting test_bulk_update_integrity")
-        updated_count = User.objects.filter(username__startswith='user_').update(country='UK')
+        updated_count = User.objects.filter(username__startswith='user_').update(country='AF')
         self.assertEqual(updated_count, 10000)
-        updated_users = User.objects.filter(country='UK').count()
+        updated_users = User.objects.filter(country='AF').count()
         self.assertEqual(updated_users, 10000)
         logger.info("test_bulk_update_integrity passed")
 
 
 class UserCRUDTests(APITestCase):
     def setUp(self):
+        logger.info('Setting up UserCRUDTests...')
         self.admin_user = User.objects.create_superuser(
             username='admin', email='admin@example.com', password='adminpass', date_of_birth='1980-01-01', country='US')
         self.client.force_authenticate(user=self.admin_user)
 
     def test_create_user(self):
+        logger.info('Starting test_create_user')
         url = reverse('user-list')
         data = {'username': 'testuser', 'email': 'testuser@example.com', 'password': 'password123',
                 'date_of_birth': '1990-01-01', 'country': 'US'}
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['username'], 'testuser')
+        logger.info('test_create_user passed')
 
     def test_user_list(self):
+        logger.info('Starting test_user_list')
         url = reverse('user-list')
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertGreater(len(response.data), 0)
+        logger.info('test_user_list passed')
 
     def test_user_filter_by_country(self):
+        logger.info('Starting test_user_filter_by_country')
         url = reverse('user-list') + '?search=US'
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
         for user in response.data:
             self.assertEqual(user['country'], 'US')
+        logger.info('test_user_filter_by_country passed')
 
     def test_user_update(self):
+        logger.info('Starting test_user_update')
         user = User.objects.create_user(username='user1', email='user1@example.com', password='password',
                                         date_of_birth='2000-01-01', country='CA')
         url = reverse('user-detail', args=[user.id])
-        data = {'username': 'user1_updated', 'email': 'user1_updated@example.com'}
+        data = {'username': 'user1_updated', 'email': 'user1_updated@example.com', 'password': 'password',
+                'date_of_birth': '2000-01-01', 'country': 'CA'}
         response = self.client.put(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['username'], 'user1_updated')
+        logger.info('test_user_update passed')
 
     def test_user_delete(self):
+        logger.info('Starting test_user_delete')
         user = User.objects.create_user(username='user1', email='user1@example.com', password='password',
                                         date_of_birth='2000-01-01', country='CA')
         url = reverse('user-detail', args=[user.id])
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(User.objects.filter(id=user.id).exists())
+        logger.info('test_user_delete passed')
+
+    def test_partial_update_user(self):
+        logger.info('Starting test_partial_update_user')
+        user = User.objects.create_user(
+            username='testuser',
+            email='testuser@example.com',
+            password='testpassword',
+            date_of_birth='1990-01-01',
+            country='US',
+        )
+        url = reverse('user-detail', args=[user.id])
+
+        payload = {'country': 'AF'}
+        response = self.client.patch(url, payload, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        user.refresh_from_db()
+        self.assertEqual(user.country, 'AF')
+        logger.info('test_partial_update_user passed')
+
+    def test_partial_update_invalid_field(self):
+        logger.info('Starting test_partial_update_invalid_field')
+        user = User.objects.create_user(
+            username='testuser',
+            email='testuser@example.com',
+            password='testpassword',
+            date_of_birth='1990-01-01',
+            country='US',
+        )
+        url = reverse('user-detail', args=[user.id])
+
+        payload = {'nonexistent_field': 'value'}
+        response = self.client.patch(url, payload, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertNotIn('nonexistent_field', response.data)
+        logger.info('test_partial_update_invalid_field passed')
+
+
+class VerifyEmailTest(APITestCase):
+    def setUp(self):
+        logger.info('Setting up VerifyEmailTest...')
+        self.user = User.objects.create_user(
+            username='testuser',
+            email='test@example.com',
+            password='password123',
+            date_of_birth='2000-01-01',
+            country='US'
+        )
+        self.user.email_confirmation_token = str(uuid.uuid4())
+        self.user.save()
+
+    def test_email_verification_success(self):
+        logger.info('Starting test_email_verification_success')
+        response = self.client.get(f'/verify-email/?token={self.user.email_confirmation_token}')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.email_confirmed)
+        logger.info('test_email_verification_success passed')
+
+    # def test_email_verification_invalid_token(self):
+    #     logger.info('Starting test_email_verification_invalid_token')
+    #     response = self.client.get(f'/verify-email/?token=invalid-token')
+    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+    #     logger.info('test_email_verification_invalid_token passed')
+
+
+class UpdateEmailTest(APITestCase):
+    def setUp(self):
+        logger.info('Setting up UpdateEmailTest...')
+        self.user = User.objects.create_user(
+            username='testuser',
+            email='test@example.com',
+            password='password123',
+            date_of_birth='2000-01-01',
+            country='US'
+        )
+        self.client.force_authenticate(user=self.user)
+
+    def test_update_email(self):
+        logger.info('Starting test_update_email')
+        response = self.client.post('/update-email/', {'email': 'new@example.com'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.email_confirmed)
+        logger.info('test_update_email passed')
+
+
+class UpdateAvatarTest(APITestCase):
+    def setUp(self):
+        logger.info('Setting up UpdateAvatarTest...')
+        self.user = User.objects.create_user(
+            username='testuser',
+            email='test@example.com',
+            password='password123',
+            date_of_birth='2000-01-01',
+            country='US'
+        )
+        self.client.force_authenticate(user=self.user)
+
+    # def test_update_avatar(self):
+    #     logger.info('Starting test_update_avatar')
+    #     avatar = SimpleUploadedFile(
+    #         'C:/PC/5th_semester/Productivity_Pulse/study_clock/study_clock/media/avatars/PXL_20241114_015021407.jpg',
+    #         b'file_content', content_type='image/jpeg')
+    #     response = self.client.post('/update-avatar/', {'avatar': avatar})
+    #     self.assertEqual(response.status_code, status.HTTP_200_OK)
+    #     self.user.refresh_from_db()
+    #     self.assertIsNotNone(self.user.avatar)
+    #     logger.info('test_update_avatar passed')

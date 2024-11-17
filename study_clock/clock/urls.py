@@ -9,7 +9,7 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView
 )
-from .views import ProtectedView, UserUpdateView
+from .views import ProtectedView, UserUpdateView, VerifyEmailView, UpdateEmailView, UpdateAvatarView
 from .views import RegisterView
 
 schema_view = get_schema_view(
@@ -40,5 +40,8 @@ urlpatterns = [
     # path('clock/login/', views.LoginView.as_view(), name='login'),
     path('clock/login/', views.login_page, name='login'),
     path('api/', include(router.urls)),
-    path('api/users/<int:pk>/', UserUpdateView.as_view(), name='user-update')
+    path('api/users/<int:pk>/', UserUpdateView.as_view(), name='user-update'),
+    path('verify-email/', VerifyEmailView.as_view(), name='verify-email'),
+    path('update-email/', UpdateEmailView.as_view(), name='update-email'),
+    path('update-avatar/', UpdateAvatarView.as_view(), name='update-avatar'),
 ]

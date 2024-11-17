@@ -9,10 +9,13 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
-from .serializers import RegisterSerializer, ErrorSerializer, MessageSerializer, LoginSerializer, UserSerializer
+from .serializers import RegisterSerializer, ErrorSerializer, MessageSerializer, LoginSerializer, UserSerializer, \
+    EmailUpdateSerializer, AvatarUpdateSerializer
 from .permissions import IsAdmin
 from .models import User
+from .utils import send_email_confirmation
 import logging
+import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -178,4 +181,44 @@ class UserUpdateView(APIView):
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class VerifyEmailView(APIView):
+    def get(self, request):
+        token = request.query_params.get('token')
+        if not token:
+            return Response({'detail': 'Token is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(email_confirmation_token=token)
+            user.email_confirmed = True
+            user.email_confirmation_token = None
+            user.save()
+            return Response({'message': 'Email successfully confirmed.'}, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({'detail': 'Invalid or expired token'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UpdateEmailView(APIView):
+    def post(self, request):
+        user = request.user
+        serializer = EmailUpdateSerializer(user, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            user.email_confirmation_token = uuid.uuid4()
+            user.email_confirmed = False
+            user.save()
+            send_email_confirmation(user)
+            return Response({'message': 'Email updated. Please confirm your new email.'}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UpdateAvatarView(APIView):
+    def post(self, request):
+        user = request.user
+        serializer = AvatarUpdateSerializer(user, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'message': 'Avatar updated successfully.'}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

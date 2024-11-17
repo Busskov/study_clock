@@ -1,3 +1,4 @@
+import uuid
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django_countries.fields import CountryField
@@ -14,6 +15,8 @@ class User(AbstractUser):
     country = CountryField(verbose_name='Country')
     is_premium = models.BooleanField(default=False, verbose_name='Premium User')
     avatar = models.ImageField(upload_to='avatars/', null=True, blank=True, verbose_name='Avatar')
+    email_confirmed = models.BooleanField(default=False)
+    email_confirmation_token = models.UUIDField(default=uuid.uuid4, unique=True, blank=True, null=True)
 
     objects = UserManager()
     REQUIRED_FIELDS = ['email', 'date_of_birth', 'country']
