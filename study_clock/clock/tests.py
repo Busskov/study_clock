@@ -529,11 +529,11 @@ class VerifyEmailTest(APITestCase):
         self.assertTrue(self.user.email_confirmed)
         logger.info('test_email_verification_success passed')
 
-    # def test_email_verification_invalid_token(self):
-    #     logger.info('Starting test_email_verification_invalid_token')
-    #     response = self.client.get(f'/verify-email/?token=invalid-token')
-    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-    #     logger.info('test_email_verification_invalid_token passed')
+    def test_email_verification_invalid_token(self):
+        logger.info('Starting test_email_verification_invalid_token')
+        response = self.client.get(f'/verify-email/?token=invalid-token')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        logger.info('test_email_verification_invalid_token passed')
 
 
 class UpdateEmailTest(APITestCase):
@@ -569,13 +569,18 @@ class UpdateAvatarTest(APITestCase):
         )
         self.client.force_authenticate(user=self.user)
 
-    # def test_update_avatar(self):
-    #     logger.info('Starting test_update_avatar')
-    #     avatar = SimpleUploadedFile(
-    #         'C:/PC/5th_semester/Productivity_Pulse/study_clock/study_clock/media/avatars/PXL_20241114_015021407.jpg',
-    #         b'file_content', content_type='image/jpeg')
-    #     response = self.client.post('/update-avatar/', {'avatar': avatar})
-    #     self.assertEqual(response.status_code, status.HTTP_200_OK)
-    #     self.user.refresh_from_db()
-    #     self.assertIsNotNone(self.user.avatar)
-    #     logger.info('test_update_avatar passed')
+    def test_update_avatar(self):
+        logger.info('Starting test_update_avatar')
+        with open(
+                'C:/PC/5th_semester/Productivity_Pulse/study_clock/study_clock/media/avatars/PXL_20241114_015021407.jpg',
+                'rb') as file:
+            avatar = SimpleUploadedFile(
+                name='test_avatar.jpg',
+                content=file.read(),
+                content_type='image/jpeg'
+            )
+        response = self.client.post('/update-avatar/', {'avatar': avatar})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertIsNotNone(self.user.avatar)
+        logger.info('test_update_avatar passed')

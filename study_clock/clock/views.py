@@ -1,4 +1,5 @@
 from django.contrib.auth import authenticate, login
+from django.db import models
 from django.http import HttpResponse
 from django.shortcuts import render, redirect
 from drf_yasg import openapi
@@ -10,9 +11,9 @@ from rest_framework.status import HTTP_201_CREATED
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import RegisterSerializer, ErrorSerializer, MessageSerializer, LoginSerializer, UserSerializer, \
-    EmailUpdateSerializer, AvatarUpdateSerializer
+    EmailUpdateSerializer, AvatarUpdateSerializer, PrivateMessageSerializer
 from .permissions import IsAdmin
-from .models import User
+from .models import User, PrivateMessage
 from .utils import send_email_confirmation
 import logging
 import uuid
@@ -189,6 +190,10 @@ class VerifyEmailView(APIView):
         token = request.query_params.get('token')
         if not token:
             return Response({'detail': 'Token is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            uuid.UUID(token)
+        except:
+            return Response({'detail': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             user = User.objects.get(email_confirmation_token=token)
@@ -217,8 +222,33 @@ class UpdateEmailView(APIView):
 class UpdateAvatarView(APIView):
     def post(self, request):
         user = request.user
-        serializer = AvatarUpdateSerializer(user, data=request.data)
+        if 'avatar' not in request.FILES:
+            return Response({'avatar': 'This field is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = AvatarUpdateSerializer(user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response({'message': 'Avatar updated successfully.'}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class MessageHistoryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, user_id):
+        messages = PrivateMessage.objects.filter(
+            (models.Q(sender=request.user) & models.Q(receiver_id=user_id)) |
+            (models.Q(sender_id=user_id) & models.Q(receiver=request.user))
+        ).order_by('timestamp')
+        serializer = PrivateMessageSerializer(messages, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class SendMessageView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = PrivateMessageSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(sender=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -12,7 +12,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 
-from django.conf.global_settings import AUTH_USER_MODEL, MEDIA_URL, MEDIA_ROOT
+from django.conf.global_settings import AUTH_USER_MODEL, MEDIA_URL, MEDIA_ROOT, EMAIL_BACKEND, EMAIL_HOST, EMAIL_PORT, \
+    EMAIL_USE_TLS, EMAIL_HOST_PASSWORD
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -201,3 +202,10 @@ LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/clock/login/'
 
 SITE_URL = 'http://localhost:8000'
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'a@gmail.com'
+EMAIL_HOST_PASSWORD = 'aaaaaaaaaaaaaaaa'
