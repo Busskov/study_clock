@@ -1,13 +1,19 @@
 import logging
 import uuid
 import random
+
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError, models
 from django.db.models import F, ExpressionWrapper, fields
+from django.http import HttpRequest
 from django.test import TestCase
-from .models import User, Activity
+from rest_framework.exceptions import ValidationError
+
+from .models import User, Activity, PrivateMessage
 from rest_framework.test import APITestCase, APIClient
-from .serializers import RegisterSerializer
+
+from .permissions import IsAdmin, IsPremiumUser
+from .serializers import RegisterSerializer, LoginSerializer, EmailUpdateSerializer
 from django.urls import reverse, resolve
 from rest_framework import status
 from .views import RegisterView, ProtectedView
@@ -46,6 +52,46 @@ class UserManagerTest(TestCase):
             )
         logger.info("test_create_user_missing_fields passed")
 
+    def test_create_user_with_missing_country(self):
+        logger.info("Starting test_create_user_with_missing_country")
+        with self.assertRaises(TypeError):
+            User.objects.create_user(
+                username="defaultuser",
+                email="email@gmail.com",
+                password='password',
+                date_of_birth='2000-01-01'
+            )
+
+        with self.assertRaises(ValueError):
+            User.objects.create_user(
+                username="defaultuser",
+                email="email@gmail.com",
+                password='password',
+                date_of_birth='2000-01-01',
+                country=None
+            )
+        logger.info("test_create_user_with_missing_country has been passed")
+
+    def test_create_user_with_missing_username(self):
+        logger.info("Starting test_create_user_with_missing_username")
+        with self.assertRaises(TypeError):
+            User.objects.create_user(
+                email="email@gmail.com",
+                password='password',
+                date_of_birth='2000-01-01',
+                country="UK"
+            )
+
+        with self.assertRaises(ValueError):
+            User.objects.create_user(
+                username=None,
+                email="email@gmail.com",
+                password='password',
+                date_of_birth='2000-01-01',
+                country="BY"
+            )
+        logger.info("test_create_user_with_missing_username has been passed")
+
     def test_create_superuser(self):
         logger.info("Starting test_create_superuser")
         admin_user = User.objects.create_superuser(
@@ -71,6 +117,19 @@ class UserManagerTest(TestCase):
                 is_staff=False
             )
         logger.info("test_create_superuser_invalid_permissions passed")
+
+    def test_create_superuser_incorrectly(self):
+        logger.info("Starting test_create_superuser_incorrectly")
+        with self.assertRaises(ValueError):
+            User.objects.create_superuser(
+                username='superuser',
+                email='super@email.com',
+                password='password',
+                date_of_birth='1999-09-09',
+                country='UK',
+                is_superuser=False
+            )
+        logger.info('test_create_superuser_incorrectly has been passed')
 
 
 class UserModelTest(TestCase):
@@ -548,6 +607,23 @@ class UpdateEmailTest(APITestCase):
         )
         self.client.force_authenticate(user=self.user)
 
+
+        self.another_user = User.objects.create_user(
+            username='another',
+            email='another@example.com',
+            password='another',
+            date_of_birth='2000-01-01',
+            country='BY'
+        )
+        self.another_user.save()
+
+    def test_invalid_email(self):
+        data = {'username': 'testuser', 'password': 'password123', 'email' : 'test@example.com'}
+        email_serializer = EmailUpdateSerializer(data)
+        new_email = 'another@example.com'
+        with self.assertRaises(ValidationError):
+            email_serializer.validate_email(new_email)
+
     def test_update_email(self):
         logger.info('Starting test_update_email')
         response = self.client.post('/update-email/', {'email': 'new@example.com'})
@@ -571,16 +647,162 @@ class UpdateAvatarTest(APITestCase):
 
     def test_update_avatar(self):
         logger.info('Starting test_update_avatar')
+
         with open(
-                'C:/PC/5th_semester/Productivity_Pulse/study_clock/study_clock/media/avatars/PXL_20241114_015021407.jpg',
+                'D:/Artem/UNIVERSITY/3rd_grade/study_clock/study_clock/staticfiles/media/PXL_20241114_015021407.jpg',
                 'rb') as file:
             avatar = SimpleUploadedFile(
                 name='test_avatar.jpg',
                 content=file.read(),
                 content_type='image/jpeg'
             )
-        response = self.client.post('/update-avatar/', {'avatar': avatar})
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.user.refresh_from_db()
-        self.assertIsNotNone(self.user.avatar)
-        logger.info('test_update_avatar passed')
+            response = self.client.post('/update-avatar/', {'avatar': avatar})
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.user.refresh_from_db()
+            self.assertIsNotNone(self.user.avatar)
+            logger.info('test_update_avatar passed')
+
+
+class PrivateMessageTest(APITestCase):
+    def setUp(self):
+        logger.info('Setting up PrivateMessageTest...')
+        self.sender = User.objects.create_user(
+            username='sender',
+            email='sender@gmail.com',
+            password='send',
+            date_of_birth='2000-01-01',
+            country='US'
+        )
+        self.receiver = User.objects.create_user(
+            username='receiver',
+            email='reciever@gmail.com',
+            password='receive',
+            date_of_birth='2000-01-01',
+            country='BY'
+        )
+        self.sender.save()
+        self.receiver.save()
+
+    def test_private_message_str(self):
+        logger.info('Starting test_private_message_str')
+        private_message = PrivateMessage.objects.create(
+            sender=self.sender,
+            receiver=self.receiver,
+            content='Hello World!',
+            timestamp='2024-10-10',
+            is_read=False
+        )
+        private_message_str = str(private_message)
+
+        self.assertEqual(private_message_str, f'From sender to receiver: Hello World!')
+        logger.info('test_private_message_str has been passed')
+
+
+class CustomPermissionsTest(APITestCase):
+    def setUp(self):
+        logger.info('Setting up CustomPermissionsTest...')
+        self.staff_user = User.objects.create_user(
+            username='staffuser',
+            email='staffuser@gmail.com',
+            password='staffuser',
+            date_of_birth='2000-01-01',
+            country='US',
+            is_staff=True
+        )
+        self.not_staff_user = User.objects.create_user(
+            username='notstaffuser',
+            email='notstaffuser@gmail.com',
+            password='notstaffuser',
+            date_of_birth='2000-01-01',
+            country='US',
+            is_staff=False
+        )
+        self.premium_user = User.objects.create_superuser(
+            username='premium',
+            email='prem@gmail.com',
+            password='premium',
+            date_of_birth='2020-01-01',
+            country='BY',
+            is_premium=True
+        )
+        self.not_premium_user = User.objects.create_superuser(
+            username='notpremium',
+            email='notprem@gmail.com',
+            password='notpremium',
+            date_of_birth='2020-01-01',
+            country='BY',
+            is_premium=False
+        )
+
+    def test_is_admin(self):
+        logger.info('Starting test_is_admin')
+
+        request = HttpRequest()
+        request.user = self.staff_user
+        permission = IsAdmin()
+        self.assertTrue(permission.has_permission(request, None))
+
+        request = HttpRequest()
+        request.user = self.not_staff_user
+        permission = IsAdmin()
+        self.assertFalse(permission.has_permission(request, None))
+
+        logger.info('test_is_admin has been passed')
+
+    def test_is_premium(self):
+        logger.info('Starting test_is_premium')
+
+        request = HttpRequest()
+        request.user = self.premium_user
+        permission = IsPremiumUser()
+        self.assertTrue(permission.has_permission(request, None))
+
+        request = HttpRequest()
+        request.user = self.not_premium_user
+        permission = IsPremiumUser()
+        self.assertFalse(permission.has_permission(request, None))
+
+        logger.info('test_is_premium has been passed')
+
+
+class LoginSerializerTest(APITestCase):
+    def setUp(self):
+        self.valid_user = User.objects.create_user(
+            username='valid',
+            email='valid@gmail.com',
+            password='valid',
+            date_of_birth='2020-01-01',
+            country='BY'
+        )
+        self.valid_user.save()
+
+    def test_valid_user(self):
+        logger.info('Starting test_valid_user')
+
+        data = {'username': 'valid', 'password': 'valid'}
+        serializer = LoginSerializer(data=data)
+        user = serializer.validate(data)
+        self.assertEqual(user.username, 'valid')
+        self.assertTrue(user.check_password('valid'))
+
+        logger.info('test_valid_user has been passed')
+
+    def test_invalid_username(self):
+        logger.info('Starting test_invalid_username')
+
+        data = {'username': 'invalid', 'password': 'valid'}
+        serializer = LoginSerializer(data=data)
+        with self.assertRaises(ValidationError):
+            serializer.validate(data)
+
+        logger.info('test_invalid_username has been passed')
+
+    def test_invalid_password(self):
+        logger.info('Starting test_invalid_password')
+
+        data = {'username': 'valid', 'password': 'invalid'}
+        serializer = LoginSerializer(data=data)
+        with self.assertRaises(ValidationError):
+            serializer.validate(data)
+
+        logger.info('test_invalid_password has been passed')
