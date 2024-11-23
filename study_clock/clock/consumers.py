@@ -1,10 +1,16 @@
 import json
 import logging
+import os
 from channels.generic.websocket import AsyncWebsocketConsumer
-from clock.models import PrivateMessage
-from clock.serializers import PrivateMessageSerializer
+import django
 
 logger = logging.getLogger(__name__)
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'study_clock.settings')
+django.setup()
+
+from .serializers import PrivateMessageSerializer
+from .models import PrivateMessage
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -14,7 +20,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         self.chat_room = f'chat_{self.user.id}_{self.chat_user_id}'
 
         if self.user.is_authenticated:
-            await self.channel_name.group_add(self.chat_room, self.channel_name)
+            await self.channel_layer.group_add(self.chat_room, self.channel_name)
             await self.accept()
         else:
             await self.close()
@@ -34,7 +40,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 content=content,
             )
 
-            serializer = PrivateMessageSerializer(message)
+            serializer = PrivateMessageSerializer(instance=message)
 
             await self.channel_layer.group_send(
                 self.chat_room,
