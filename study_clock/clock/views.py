@@ -172,6 +172,27 @@ class UserFilterViewSet(viewsets.ModelViewSet):
 class UserUpdateView(APIView):
     permission_classes = [AllowAny]
 
+    @swagger_auto_schema(
+        operation_description='Updates user information based on the provided user ID.',
+        request_body=UserSerializer,
+        responses={
+            200: openapi.Response(
+                description='User updated successfully',
+                schema=UserSerializer,
+                examples={'application/json': {'id': 1, 'username': 'updated_user', 'email': 'updated@example.com'}}
+            ),
+            400: openapi.Response(
+                description='Validation Error',
+                schema=ErrorSerializer,
+                examples={'application/json': {'username': ['This field is required.']}}
+            ),
+            404: openapi.Response(
+                description='User not found',
+                schema=ErrorSerializer,
+                examples={'application/json': {'detail': 'User not found'}}
+            )
+        }
+    )
     def put(self, request, pk):
         try:
             user = User.objects.get(pk=pk)
@@ -186,6 +207,30 @@ class UserUpdateView(APIView):
 
 
 class VerifyEmailView(APIView):
+    @swagger_auto_schema(
+        operation_description='Verifies a user\'s email using a provided token.',
+        manual_parameters=[
+            openapi.Parameter(
+                'token',
+                openapi.IN_QUERY,
+                description='Email confirmation token',
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
+        responses={
+            200: openapi.Response(
+                description='Email successfully confirmed',
+                schema=MessageSerializer,
+                examples={'application/json': {'message': 'Email successfully confirmed.'}}
+            ),
+            400: openapi.Response(
+                description='Invalid or missing token',
+                schema=ErrorSerializer,
+                examples={'application/json': {'detail': 'Invalid token'}}
+            )
+        }
+    )
     def get(self, request):
         token = request.query_params.get('token')
         if not token:
@@ -206,6 +251,22 @@ class VerifyEmailView(APIView):
 
 
 class UpdateEmailView(APIView):
+    @swagger_auto_schema(
+        operation_description='Updates a user\'s email and sends a confirmation token to the new address.',
+        request_body=EmailUpdateSerializer,
+        responses={
+            200: openapi.Response(
+                description='Email updated successfully',
+                schema=MessageSerializer,
+                examples={'application/json': {'message': 'Email updated. Please confirm your new email.'}}
+            ),
+            400: openapi.Response(
+                description='Validation Error',
+                schema=ErrorSerializer,
+                examples={'application/json': {'email': ['Invalid email address']}}
+            )
+        }
+    )
     def post(self, request):
         user = request.user
         serializer = EmailUpdateSerializer(user, data=request.data)
@@ -220,6 +281,28 @@ class UpdateEmailView(APIView):
 
 
 class UpdateAvatarView(APIView):
+    @swagger_auto_schema(
+        operation_description='Updates the user\'s avatar.',
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'avatar': openapi.Schema(type=openapi.TYPE_FILE, description='New avatar file')
+            },
+            required=['avatar']
+        ),
+        responses={
+            200: openapi.Response(
+                description='Avatar updated successfully',
+                schema=MessageSerializer,
+                examples={'application/json': {'message': 'Avatar updated successfully.'}}
+            ),
+            400: openapi.Response(
+                description='Validation Error',
+                schema=ErrorSerializer,
+                examples={'application/json': {'avatar': ['This field is required.']}}
+            )
+        }
+    )
     def post(self, request):
         user = request.user
         if 'avatar' not in request.FILES:
@@ -234,6 +317,25 @@ class UpdateAvatarView(APIView):
 class MessageHistoryView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(
+        operation_description='Fetches message history between the authenticated user and a specified user.',
+        manual_parameters=[
+            openapi.Parameter(
+                'user_id',
+                openapi.IN_PATH,
+                description='The ID of the user to fetch the message history with.',
+                type=openapi.TYPE_INTEGER,
+                required=True
+            )
+        ],
+        responses={
+            200: openapi.Response(
+                description='Message history retrieved successfully',
+                schema=PrivateMessageSerializer(many=True),
+                examples={'application/json': [{'sender': 1, 'receiver': 2, 'message': 'Hello!'}]}
+            )
+        }
+    )
     def get(self, request, user_id):
         messages = PrivateMessage.objects.filter(
             (models.Q(sender=request.user) & models.Q(receiver_id=user_id)) |
@@ -246,6 +348,22 @@ class MessageHistoryView(APIView):
 class SendMessageView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(
+        operation_description='Sends a private message from the authenticated user.',
+        request_body=PrivateMessageSerializer,
+        responses={
+            201: openapi.Response(
+                description='Message sent successfully',
+                schema=PrivateMessageSerializer,
+                examples={'application/json': {'sender': 1, 'receiver': 2, 'message': 'Hello!'}}
+            ),
+            400: openapi.Response(
+                description='Validation Error',
+                schema=ErrorSerializer,
+                examples={'application/json': {'message': ['This field is required.']}}
+            )
+        }
+    )
     def post(self, request):
         serializer = PrivateMessageSerializer(data=request.data)
         if serializer.is_valid():
