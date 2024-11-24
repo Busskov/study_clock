@@ -1,3 +1,4 @@
+import uuid
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django_countries.fields import CountryField
@@ -14,6 +15,8 @@ class User(AbstractUser):
     country = CountryField(verbose_name='Country')
     is_premium = models.BooleanField(default=False, verbose_name='Premium User')
     avatar = models.ImageField(upload_to='avatars/', null=True, blank=True, verbose_name='Avatar')
+    email_confirmed = models.BooleanField(default=False)
+    email_confirmation_token = models.UUIDField(default=uuid.uuid4, unique=True, blank=True, null=True)
 
     objects = UserManager()
     REQUIRED_FIELDS = ['email', 'date_of_birth', 'country']
@@ -51,3 +54,14 @@ class Activity(models.Model):
         self.minutes_spent_in_total += minutes
         self.save()
         logger.info('Time added for activity %s. Today is time: %d minutes', self.name, self.minutes_spent_today)
+
+
+class PrivateMessage(models.Model):
+    sender = models.ForeignKey(User, related_name='sent_messages', on_delete=models.CASCADE)
+    receiver = models.ForeignKey(User, related_name='received_messages', on_delete=models.CASCADE)
+    content = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f'From {self.sender} to {self.receiver}: {self.content[:20]}'

@@ -1,6 +1,7 @@
 from django.contrib.auth import authenticate
 from rest_framework import serializers
-from clock.models import User
+from .models import User, PrivateMessage
+from .utils import send_email_confirmation
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -18,6 +19,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             country=validated_data['country'],
             avatar=validated_data.get('avatar', None)
         )
+        send_email_confirmation(user=user)
         return user
 
 
@@ -38,3 +40,33 @@ class LoginSerializer(serializers.Serializer):
         if user and user.is_active:
             return user
         raise serializers.ValidationError('Invalid username or password.')
+
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'date_of_birth', 'country', 'is_premium']
+
+
+class EmailUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['email']
+
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError('This email is already in use.')
+        return value
+
+
+class AvatarUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['avatar']
+
+
+class PrivateMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PrivateMessage
+        fields = ['id', 'sender', 'receiver', 'content', 'timestamp', 'is_read']
+        read_only_fields = ['timestamp', 'is_read']
