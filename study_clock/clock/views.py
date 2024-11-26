@@ -168,42 +168,42 @@ class UserFilterViewSet(viewsets.ModelViewSet):
 
         return queryset
 
-
-class UserUpdateView(APIView):
-    permission_classes = [AllowAny]
-
-    @swagger_auto_schema(
-        operation_description='Updates user information based on the provided user ID.',
-        request_body=UserSerializer,
-        responses={
-            200: openapi.Response(
-                description='User updated successfully',
-                schema=UserSerializer,
-                examples={'application/json': {'id': 1, 'username': 'updated_user', 'email': 'updated@example.com'}}
-            ),
-            400: openapi.Response(
-                description='Validation Error',
-                schema=ErrorSerializer,
-                examples={'application/json': {'username': ['This field is required.']}}
-            ),
-            404: openapi.Response(
-                description='User not found',
-                schema=ErrorSerializer,
-                examples={'application/json': {'detail': 'User not found'}}
-            )
-        }
-    )
-    def put(self, request, pk):
-        try:
-            user = User.objects.get(pk=pk)
-        except User.DoesNotExist:
-            return Response({'detail': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
-
-        serializer = UserSerializer(user, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+# TODO:seems like this class is clearly useless
+# class UserUpdateView(APIView):
+#     permission_classes = [AllowAny]
+#
+#     @swagger_auto_schema(
+#         operation_description='Updates user information based on the provided user ID.',
+#         request_body=UserSerializer,
+#         responses={
+#             200: openapi.Response(
+#                 description='User updated successfully',
+#                 schema=UserSerializer,
+#                 examples={'application/json': {'id': 1, 'username': 'updated_user', 'email': 'updated@example.com'}}
+#             ),
+#             400: openapi.Response(
+#                 description='Validation Error',
+#                 schema=ErrorSerializer,
+#                 examples={'application/json': {'username': ['This field is required.']}}
+#             ),
+#             404: openapi.Response(
+#                 description='User not found',
+#                 schema=ErrorSerializer,
+#                 examples={'application/json': {'detail': 'User not found'}}
+#             )
+#         }
+#     )
+#     def put(self, request, pk):
+#         try:
+#             user = User.objects.get(pk=pk)
+#         except User.DoesNotExist:
+#             return Response({'detail': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+#
+#         serializer = UserSerializer(user, data=request.data)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response(serializer.data, status=status.HTTP_200_OK)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class VerifyEmailView(APIView):

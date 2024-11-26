@@ -70,7 +70,7 @@ class UserManagerTest(TestCase):
                 date_of_birth='2000-01-01',
                 country=None
             )
-        logger.info("test_create_user_with_missing_country has been passed")
+        logger.info("test_create_user_with_missing_country passed")
 
     def test_create_user_with_missing_username(self):
         logger.info("Starting test_create_user_with_missing_username")
@@ -90,7 +90,7 @@ class UserManagerTest(TestCase):
                 date_of_birth='2000-01-01',
                 country="BY"
             )
-        logger.info("test_create_user_with_missing_username has been passed")
+        logger.info("test_create_user_with_missing_username passed")
 
     def test_create_superuser(self):
         logger.info("Starting test_create_superuser")
@@ -129,7 +129,7 @@ class UserManagerTest(TestCase):
                 country='UK',
                 is_superuser=False
             )
-        logger.info('test_create_superuser_incorrectly has been passed')
+        logger.info('test_create_superuser_incorrectly passed')
 
 
 class UserModelTest(TestCase):
@@ -346,6 +346,7 @@ class URLRoutingTest(TestCase):
         url = reverse('protected_view')
         self.assertEqual(resolve(url).func.view_class, ProtectedView)
         logger.info("test_protected_view_url_resolves passed")
+
 
 
 class LargeDatabaseTest(TestCase):
@@ -566,6 +567,30 @@ class UserCRUDTests(APITestCase):
         self.assertNotIn('nonexistent_field', response.data)
         logger.info('test_partial_update_invalid_field passed')
 
+    def test_is_premium_filter(self):
+        logger.info('Starting test_is_premium_filter')
+
+        url = reverse('user-list') + '?is_premium=True'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        for user in response.data:
+            self.assertEqual(user['is_premium'], True)
+
+        logger.info('test_is_premium_filter passed')
+
+    # def test_update_user(self):
+    #     logger.info('Starting test_update_user')
+    #     user = User.objects.create_user(username='user2', email='user2@example.com', password='password',
+    #                                     date_of_birth='2000-01-01', country='CA')
+    #     url = reverse('user-update', args=[user.id])
+    #     data = {'username': 'user2_updated', 'email': 'user2_updated@example.com', 'password': 'password',
+    #             'date_of_birth': '2000-01-01', 'country': 'CA'}
+    #     response = self.client.put(url, data, format='json')
+    #     self.assertEqual(response.status_code, status.HTTP_200_OK)
+    #     self.assertEqual(response.data['username'], 'user2_updated')
+    #     logger.info('test_update_user passed')
+
 
 class VerifyEmailTest(APITestCase):
     def setUp(self):
@@ -593,6 +618,21 @@ class VerifyEmailTest(APITestCase):
         response = self.client.get(f'/verify-email/?token=invalid-token')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         logger.info('test_email_verification_invalid_token passed')
+
+    def test_email_verification_token_not_provided(self):
+        logger.info('Starting test_email_verification_token_not_provided')
+        response = self.client.get(f'/verify-email/')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        logger.info('test_email_verification_token_not_provided passed')
+
+    def test_email_verification_of_non_existing_user(self):
+        logger.info('Starting test_email_verification_of_non_existing_user')
+        fake_token = uuid.uuid4()
+        response = self.client.get(f'/verify-email/?token={fake_token}')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['detail'], 'Invalid or expired token')
+        logger.info('test_email_verification_of_non_existing_user passed')
+
 
 
 class UpdateEmailTest(APITestCase):
@@ -630,7 +670,17 @@ class UpdateEmailTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.user.refresh_from_db()
         self.assertFalse(self.user.email_confirmed)
+        self.assertEqual(self.user.email, 'new@example.com')
         logger.info('test_update_email passed')
+
+    def test_invalid_input(self):
+        logger.info('Starting test_invalid_input')
+        response = self.client.post('/update-email/', {'email': 'newexample'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.email_confirmed)
+        self.assertNotEqual(self.user.email, 'newexample')
+        logger.info('test_invalid_input passed')
 
 
 class UpdateAvatarTest(APITestCase):
@@ -661,6 +711,29 @@ class UpdateAvatarTest(APITestCase):
             self.user.refresh_from_db()
             self.assertIsNotNone(self.user.avatar)
             logger.info('test_update_avatar passed')
+
+    def test_update_avatar_without_passing_avatar(self):
+        logger.info('Starting test_update_avatar')
+
+        response = self.client.post('/update-avatar/', {'avatar': ''})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['avatar'], 'This field is required.')
+        logger.info('test_update_avatar fucking done did wasn\'t passed')
+
+    def test_update_avatar_invalid_user(self):
+        logger.info('Starting test_update_avatar_invalid_user')
+
+        with open(
+                'D:/Artem/UNIVERSITY/3rd_grade/study_clock/study_clock/staticfiles/media/file.txt',
+                'rb') as file:
+            avatar = SimpleUploadedFile(
+                name='file.txt',
+                content=file.read(),
+                content_type='text/plain'
+            )
+            response = self.client.post('/update-avatar/', {'avatar': avatar})
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+            logger.info('test_update_avatar_invalid_user passed')
 
 
 class PrivateMessageTest(APITestCase):
@@ -695,7 +768,7 @@ class PrivateMessageTest(APITestCase):
         private_message_str = str(private_message)
 
         self.assertEqual(private_message_str, f'From sender to receiver: Hello World!')
-        logger.info('test_private_message_str has been passed')
+        logger.info('test_private_message_str passed')
 
 
 class CustomPermissionsTest(APITestCase):
@@ -747,7 +820,7 @@ class CustomPermissionsTest(APITestCase):
         permission = IsAdmin()
         self.assertFalse(permission.has_permission(request, None))
 
-        logger.info('test_is_admin has been passed')
+        logger.info('test_is_admin passed')
 
     def test_is_premium(self):
         logger.info('Starting test_is_premium')
@@ -762,7 +835,7 @@ class CustomPermissionsTest(APITestCase):
         permission = IsPremiumUser()
         self.assertFalse(permission.has_permission(request, None))
 
-        logger.info('test_is_premium has been passed')
+        logger.info('test_is_premium passed')
 
 
 class LoginSerializerTest(APITestCase):
@@ -785,7 +858,7 @@ class LoginSerializerTest(APITestCase):
         self.assertEqual(user.username, 'valid')
         self.assertTrue(user.check_password('valid'))
 
-        logger.info('test_valid_user has been passed')
+        logger.info('test_valid_user passed')
 
     def test_invalid_username(self):
         logger.info('Starting test_invalid_username')
@@ -795,7 +868,7 @@ class LoginSerializerTest(APITestCase):
         with self.assertRaises(ValidationError):
             serializer.validate(data)
 
-        logger.info('test_invalid_username has been passed')
+        logger.info('test_invalid_username passed')
 
     def test_invalid_password(self):
         logger.info('Starting test_invalid_password')
@@ -805,4 +878,40 @@ class LoginSerializerTest(APITestCase):
         with self.assertRaises(ValidationError):
             serializer.validate(data)
 
-        logger.info('test_invalid_password has been passed')
+        logger.info('test_invalid_password passed')
+
+class LoginViewTest(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='user',
+            email='user@gmail.com',
+            password='password',
+            date_of_birth='2020-01-01',
+            country='BY'
+        )
+        self.user.save()
+        self.url = reverse('login')
+
+    def test_valid_post_request_login_view(self):
+        logger.info("Starting test_valid_post_request_login_view")
+
+        data = {'username': 'user', 'password': 'password'}
+        response = self.client.post(self.url, data=data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('refresh', response.data)
+        self.assertIn('access', response.data)
+
+        logger.info("test_valid_post_request_login_view passed")
+
+    def test_invalid_post_request_login_view(self):
+        logger.info("Starting test_invalid_post_request_login_view")
+
+        data = {'username': 'user', 'password': 'fake_password'}
+        response = self.client.post(self.url, data=data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertNotIn('refresh', response.data)
+        self.assertNotIn('access', response.data)
+
+        logger.info("test_invalid_post_request_login_view passed")
+
+
