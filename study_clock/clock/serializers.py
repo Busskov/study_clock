@@ -1,6 +1,6 @@
 from django.contrib.auth import authenticate
 from rest_framework import serializers
-from .models import User, PrivateMessage
+from .models import User, PrivateMessage, Activity
 from .utils import send_email_confirmation
 
 
@@ -70,3 +70,10 @@ class PrivateMessageSerializer(serializers.ModelSerializer):
         model = PrivateMessage
         fields = ['id', 'sender', 'receiver', 'content', 'timestamp', 'is_read']
         read_only_fields = ['timestamp', 'is_read']
+
+
+class ActivitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Activity
+        fields = ['name']
+        #read_only_fields = ['user', 'minutes']

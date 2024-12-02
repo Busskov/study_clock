@@ -1,4 +1,5 @@
 from django.contrib.auth import authenticate, login
+from django.core.serializers import serialize
 from django.db import models
 from django.http import HttpResponse
 from django.shortcuts import render, redirect
@@ -11,12 +12,13 @@ from rest_framework.status import HTTP_201_CREATED
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import RegisterSerializer, ErrorSerializer, MessageSerializer, LoginSerializer, UserSerializer, \
-    EmailUpdateSerializer, AvatarUpdateSerializer, PrivateMessageSerializer
+    EmailUpdateSerializer, AvatarUpdateSerializer, PrivateMessageSerializer, ActivitySerializer
 from .permissions import IsAdmin
-from .models import User, PrivateMessage
+from .models import User, PrivateMessage, Activity
 from .utils import send_email_confirmation
 import logging
 import uuid
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -141,19 +143,19 @@ class LoginView(APIView):
 class UserListCreateView(generics.ListCreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAdmin]
 
 
 class UserRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAdmin]
 
 
 class UserFilterViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAdmin]
 
     filter_backends = (filters.OrderingFilter, filters.SearchFilter)
     search_fields = ['username', 'email', 'country']
@@ -168,45 +170,85 @@ class UserFilterViewSet(viewsets.ModelViewSet):
 
         return queryset
 
-# TODO:seems like this class is clearly useless
-# class UserUpdateView(APIView):
-#     permission_classes = [AllowAny]
-#
-#     @swagger_auto_schema(
-#         operation_description='Updates user information based on the provided user ID.',
-#         request_body=UserSerializer,
-#         responses={
-#             200: openapi.Response(
-#                 description='User updated successfully',
-#                 schema=UserSerializer,
-#                 examples={'application/json': {'id': 1, 'username': 'updated_user', 'email': 'updated@example.com'}}
-#             ),
-#             400: openapi.Response(
-#                 description='Validation Error',
-#                 schema=ErrorSerializer,
-#                 examples={'application/json': {'username': ['This field is required.']}}
-#             ),
-#             404: openapi.Response(
-#                 description='User not found',
-#                 schema=ErrorSerializer,
-#                 examples={'application/json': {'detail': 'User not found'}}
-#             )
-#         }
-#     )
-#     def put(self, request, pk):
-#         try:
-#             user = User.objects.get(pk=pk)
-#         except User.DoesNotExist:
-#             return Response({'detail': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
-#
-#         serializer = UserSerializer(user, data=request.data)
-#         if serializer.is_valid():
-#             serializer.save()
-#             return Response(serializer.data, status=status.HTTP_200_OK)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class UserUpdateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description='Updates user information based on the provided user ID.',
+        request_body=UserSerializer,
+        responses={
+            200: openapi.Response(
+                description='User updated successfully',
+                schema=UserSerializer,
+                examples={'application/json': {'id': 1, 'username': 'updated_user', 'email': 'updated@example.com'}}
+            ),
+            400: openapi.Response(
+                description='Validation Error',
+                schema=ErrorSerializer,
+                examples={'application/json': {'username': ['This field is required.']}}
+            ),
+            404: openapi.Response(
+                description='User not found',
+                schema=ErrorSerializer,
+                examples={'application/json': {'detail': 'User not found'}}
+            )
+        }
+    )
+    def put(self, request):
+        try:
+            user = request.user
+        except User.DoesNotExist:
+            return Response({'detail': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = UserSerializer(user, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+class UserReadView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    # @swagger_auto_schema(
+    #     operation_description='Returns user information.',
+    #     request_body=UserSerializer,
+    #     responses={
+    #         200: openapi.Response(
+    #             description='User updated successfully',
+    #             schema=UserSerializer,
+    #             examples={'application/json': {'id': 1, 'username': 'updated_user', 'email': 'updated@example.com'}}
+    #         ),
+    #         400: openapi.Response(
+    #             description='Validation Error',
+    #             schema=ErrorSerializer,
+    #             examples={'application/json': {'username': ['This field is required.']}}
+    #         ),
+    #         404: openapi.Response(
+    #             description='User not found',
+    #             schema=ErrorSerializer,
+    #             examples={'application/json': {'detail': 'User not found'}}
+    #         )
+    #     }
+    # )
+    def get(self, request):
+        try:
+            user = request.user
+        except User.DoesNotExist:
+            return Response({'detail': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # user_data = {}
+        # user_data['username'] = user.username
+        # user_d
+        serializer = UserSerializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+#TODO: think about this
 class VerifyEmailView(APIView):
+    permission_classes = [AllowAny]
+
     @swagger_auto_schema(
         operation_description='Verifies a user\'s email using a provided token.',
         manual_parameters=[
@@ -249,8 +291,22 @@ class VerifyEmailView(APIView):
         except User.DoesNotExist:
             return Response({'detail': 'Invalid or expired token'}, status=status.HTTP_400_BAD_REQUEST)
 
+        # try:
+        #     #user = User.objects.get(email_confirmation_token=token)
+        #     user = request.user
+        #     if user.email_confirmation_token == token:
+        #         user.email_confirmed = True
+        #         user.email_confirmation_token = None
+        #         user.save()
+        #         return Response({'message': 'Email successfully confirmed.'}, status=status.HTTP_200_OK)
+        #     return Response({'detail': 'Provided token doesnt match with expected one'}, status=status.HTTP_400_BAD_REQUEST)
+        # except User.DoesNotExist:
+        #     return Response({'detail': 'Invalid or expired token'}, status=status.HTTP_400_BAD_REQUEST)
+
 
 class UpdateEmailView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @swagger_auto_schema(
         operation_description='Updates a user\'s email and sends a confirmation token to the new address.',
         request_body=EmailUpdateSerializer,
@@ -281,6 +337,8 @@ class UpdateEmailView(APIView):
 
 
 class UpdateAvatarView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @swagger_auto_schema(
         operation_description='Updates the user\'s avatar.',
         request_body=openapi.Schema(
@@ -370,3 +428,93 @@ class SendMessageView(APIView):
             serializer.save(sender=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CreateActivityView(APIView):
+    #permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
+
+    @swagger_auto_schema(
+        operation_description='Creates new activity',
+        request_body=ActivitySerializer,
+    )
+    def post(self, request, user_id):
+        user = User.objects.get(pk=user_id)
+        name = request.data['name']
+        query = Activity.objects.filter(user=user, name=name)
+        if len(query) > 0:
+            return Response(data={'message':'activity with such name already exists for this user'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        serializer = ActivitySerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(user=user)
+            # serializer.save()
+            # return Response(serializer.data, status=status.HTTP_201_CREATED)
+            response = {'data': serializer.data, 'name': user.username}
+            return Response(response, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UpdateActivityView(APIView):
+    # permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
+
+    @swagger_auto_schema(
+        operation_description='Updates activity',
+        request_body=ActivitySerializer,
+    )
+    def patch(self, request, user_id):
+        #user = request.user
+        user = User.objects.get(pk=user_id)
+        name = request.data['old_name']
+        activity = Activity.objects.get(user=user, name=name)
+
+        activity.name = request.data['new_name']
+        activity.save()
+        response = {'name':activity.name, 'username': user.username}
+        return Response(response, status=status.HTTP_200_OK)
+        # serializer = ActivitySerializer(activity, name=request.data['new_name'])
+        # if serializer.is_valid():
+        #     serializer.save()
+        #     response = {'data':serializer.data, 'name': user.username}
+        #     return Response(response, status=status.HTTP_200_OK)
+        # return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class DeleteActivityView(APIView):
+    # permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
+
+    @swagger_auto_schema(
+        operation_description='Deletes activity',
+        request_body=ActivitySerializer,
+    )
+    def delete(self, request, user_id):
+        # user = request.user
+        user = User.objects.get(pk=user_id)
+        activity_name = request.data['name']
+
+        activities = Activity.objects.filter(user=user, name=activity_name)
+        if len(activities) == 0:
+            return Response(data={'message':'there is no such activity'}, status=status.HTTP_400_BAD_REQUEST)
+        for activity in activities:
+            activity.delete()
+        return Response(data={'message':f'activity {activity_name} has been deleted'}, status=status.HTTP_200_OK)
+
+
+class GetActivitiesListView(APIView):
+    # permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
+
+    def get(self, request, user_id):
+        # user = request.user
+        user = User.objects.get(pk=user_id)
+        activities = list(Activity.objects.filter(user=user))
+        all_activities = []
+        for activity in activities:
+            dict = {}
+            dict['name'] = activity.name
+            dict['username'] = activity.user.username
+            dict['today_spent'] = activity.minutes_spent_today
+            all_activities.append(dict)
+        return Response(json.loads(json.dumps(all_activities, indent=4)), status=status.HTTP_200_OK)

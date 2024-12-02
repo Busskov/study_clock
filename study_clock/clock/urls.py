@@ -10,9 +10,10 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView
 )
 from .views import ProtectedView, VerifyEmailView, UpdateEmailView, UpdateAvatarView, \
+    MessageHistoryView, SendMessageView, UpdateActivityView, CreateActivityView, DeleteActivityView, \
+    GetActivitiesListView, UserReadView
+from .views import ProtectedView, UserUpdateView, VerifyEmailView, UpdateEmailView, UpdateAvatarView, \
     MessageHistoryView, SendMessageView
-# from .views import ProtectedView, UserUpdateView, VerifyEmailView, UpdateEmailView, UpdateAvatarView, \
-#     MessageHistoryView, SendMessageView
 from .views import RegisterView
 
 schema_view = get_schema_view(
@@ -41,12 +42,17 @@ urlpatterns = [
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
     path('clock/login/', views.LoginView.as_view(), name='login'),
     #path('clock/login/', views.login_page, name='login'),
-    #path('api/users/<int:pk>/', UserUpdateView.as_view(), name='user-update'),
     path('api/', include(router.urls)),
+    path('api/users/custom/update/<int:pk>/', UserUpdateView.as_view(), name='user-update'),
+    path('api/users/custom/read/', UserReadView.as_view(), name='user-read'),
     path('verify-email/', VerifyEmailView.as_view(), name='verify-email'),
     path('update-email/', UpdateEmailView.as_view(), name='update-email'),
     path('update-avatar/', UpdateAvatarView.as_view(), name='update-avatar'),
     path('chat/messages/<int:user_id>/', MessageHistoryView.as_view(), name='message-history'),
     path('chat/send/', SendMessageView.as_view(), name='send-message'),
     # path('chat/', views.chat_view, name='chat'),
+    path('api/activity/update/<int:user_id>', UpdateActivityView.as_view(), name='update-activity'),
+    path('api/activity/create/<int:user_id>', CreateActivityView.as_view(), name='create-activity'),
+    path('api/activity/delete/<int:user_id>', DeleteActivityView.as_view(), name='delete-activity'),
+    path('api/activity/all/<int:user_id>', GetActivitiesListView.as_view(), name='all-activities')
 ]
