@@ -1,15 +1,57 @@
 services:
-    web:
-        image: python:3.12
-        container_name: django_web
+    db:
+        build:
+            context: .
+            dockerfile: Dockerfile.db
+        container_name: study_clock_db
+        restart: always
+        ports:
+            - "5432:5432"
+        networks:
+            - vpn_network
         volumes:
-            - .:/app
-            - sqlite_data:/app/db
-        working_dir: /app
-        command: sh -c "pip install -r requirements.txt && daphne -b 0.0.0.0 -p 8000 study_clock.asgi:application"
+            - postgres_data:/var/lib/postgresql/data
+        environment:
+            POSTGRES_DB: db
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: HomeWork
+
+    redis:
+        image: redis:alpine
+        container_name: study_clock_redis
+        restart: always
+        ports:
+            - "6379:6379"
+        networks:
+            - vpn_network
+
+    backend:
+        build:
+            context: .
+            dockerfile: Dockerfile.backend
+        container_name: study_clock_backend
+        restart: always
         ports:
             - "8000:8000"
+        networks:
+            - vpn_network
+        volumes:
+            - .:/app
+        depends_on:
+            - db
+            - redis
+        environment:
+            DATABASE_HOST: db
+            DATABASE_PORT: 5432
+            DATABASE_NAME: db
+            DATABASE_USER: postgres
+            DATABASE_PASSWORD: HomeWork
+            REDIS_HOST: redis
+            REDIS_PORT: 6379
 
 volumes:
-    sqlite_data:
-        driver: local
+    postgres_data:
+
+networks:
+    vpn_network:
+        driver: bridge

@@ -28,7 +28,7 @@ SECRET_KEY = 'django-insecure-!k1#(+!90p#(=mf-yz!*6fd=7j+_-!y_k74@@misn0)iea_&3n
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '26.191.80.219', '26.124.9.217']
+ALLOWED_HOSTS = ['172.19.0.4', '127.0.0.1', 'localhost', '26.191.80.219', '26.124.9.217', 'study_clock_backend']
 
 # Application definition
 
@@ -53,7 +53,7 @@ CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            'hosts': [('127.0.0.1', 6379)],
+            'hosts': [('study_clock_redis', 6379)],
         },
     },
 }
@@ -86,10 +86,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-]
-
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True
@@ -128,8 +124,12 @@ WSGI_APPLICATION = 'study_clock.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db/db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'db',
+        'USER': 'postgres',
+        'PASSWORD': 'HomeWork',
+        'HOST': 'db',
+        'PORT': '5432',
     }
 }
 
@@ -218,9 +218,6 @@ LOGGING = {
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
-
-LOGIN_REDIRECT_URL = '/'
-LOGOUT_REDIRECT_URL = '/clock/login/'
 
 SITE_URL = 'http://26.191.80.219:8000'
 
