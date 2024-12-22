@@ -19,7 +19,7 @@ class User(AbstractUser):
     email_confirmation_token = models.UUIDField(default=uuid.uuid4, unique=True, blank=True, null=True)
 
     objects = UserManager()
-    REQUIRED_FIELDS = ['email', 'date_of_birth', 'country']
+    REQUIRED_FIELDS = ['first_name','last_name', 'email', 'date_of_birth', 'country']
 
     class Meta:
         db_table = 'user'
