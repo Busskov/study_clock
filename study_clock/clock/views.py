@@ -431,16 +431,17 @@ class SendMessageView(APIView):
 
 
 class CreateActivityView(APIView):
-    #permission_classes = [IsAuthenticated]
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
         operation_description='Creates new activity',
         request_body=ActivitySerializer,
     )
-    def post(self, request, user_id):
-        user = User.objects.get(pk=user_id)
+    def post(self, request):
+        logger.debug("Creating new activity view:")
+        user = request.user
         name = request.data['name']
+        logger.debug(f"Activity name:{name}")
         query = Activity.objects.filter(user=user, name=name)
         if len(query) > 0:
             return Response(data={'message':'activity with such name already exists for this user'},
@@ -448,24 +449,21 @@ class CreateActivityView(APIView):
         serializer = ActivitySerializer(data=request.data)
         if serializer.is_valid():
             serializer.save(user=user)
-            # serializer.save()
-            # return Response(serializer.data, status=status.HTTP_201_CREATED)
             response = {'data': serializer.data, 'name': user.username}
             return Response(response, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UpdateActivityView(APIView):
-    # permission_classes = [IsAuthenticated]
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
         operation_description='Updates activity',
         request_body=ActivitySerializer,
     )
-    def patch(self, request, user_id):
-        #user = request.user
-        user = User.objects.get(pk=user_id)
+    def patch(self, request):
+        logger.debug("Updating new activity view:")
+        user = request.user
         name = request.data['old_name']
         activity = Activity.objects.get(user=user, name=name)
 
@@ -473,25 +471,17 @@ class UpdateActivityView(APIView):
         activity.save()
         response = {'name':activity.name, 'username': user.username}
         return Response(response, status=status.HTTP_200_OK)
-        # serializer = ActivitySerializer(activity, name=request.data['new_name'])
-        # if serializer.is_valid():
-        #     serializer.save()
-        #     response = {'data':serializer.data, 'name': user.username}
-        #     return Response(response, status=status.HTTP_200_OK)
-        # return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class DeleteActivityView(APIView):
-    # permission_classes = [IsAuthenticated]
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
         operation_description='Deletes activity',
         request_body=ActivitySerializer,
     )
-    def delete(self, request, user_id):
-        # user = request.user
-        user = User.objects.get(pk=user_id)
+    def delete(self, request):
+        user = request.user
         activity_name = request.data['name']
 
         activities = Activity.objects.filter(user=user, name=activity_name)
@@ -503,18 +493,43 @@ class DeleteActivityView(APIView):
 
 
 class GetActivitiesListView(APIView):
-    # permission_classes = [IsAuthenticated]
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
-    def get(self, request, user_id):
-        # user = request.user
-        user = User.objects.get(pk=user_id)
+    def get(self, request):
+        user = request.user
         activities = list(Activity.objects.filter(user=user))
         all_activities = []
         for activity in activities:
             dict = {}
             dict['name'] = activity.name
             dict['username'] = activity.user.username
-            dict['today_spent'] = activity.minutes_spent_today
+            dict['minutes_spent_today'] = activity.minutes_spent_today
+            dict['minutes_spent_this_week'] = activity.minutes_spent_this_week
+            dict['minutes_spent_this_month'] = activity.minutes_spent_this_month
+            dict['minutes_spent_in_total'] = activity.minutes_spent_in_total
             all_activities.append(dict)
         return Response(json.loads(json.dumps(all_activities, indent=4)), status=status.HTTP_200_OK)
+
+
+class TimerUpdate(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        activity_name = request.data['name']
+        minutes_spent = request.data['time']
+
+        try:
+            minutes_spent = int(minutes_spent)
+        except:
+            return Response(data={'message': 'error occurred during casting added time to integer'}, status=status.HTTP_400_BAD_REQUEST)
+
+        activities = Activity.objects.filter(user=user, name=activity_name)
+
+        if len(activities) == 0:
+            return Response(data={'message': 'there is no such activity'}, status=status.HTTP_400_BAD_REQUEST)
+
+        activity = activities.last()
+        activity.add_time(minutes_spent)
+
+        return Response(data={'message': f'{minutes_spent} minutes have been added for {activity.name} activity'}, status=status.HTTP_200_OK)

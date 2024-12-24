@@ -7,11 +7,13 @@ from .utils import send_email_confirmation
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('username', 'email', 'password', 'date_of_birth', 'country', 'avatar')
+        fields = ('first_name', 'last_name', 'username', 'email', 'password', 'date_of_birth', 'country', 'avatar')
         extra_kwargs = {'password': {'write_only': True}}
 
     def create(self, validated_data):
         user = User.objects.create_user(
+            first_name = validated_data['first_name'],
+            last_name = validated_data['last_name'],
             username=validated_data['username'],
             email=validated_data['email'],
             password=validated_data['password'],
@@ -45,7 +47,7 @@ class LoginSerializer(serializers.Serializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'date_of_birth', 'country', 'is_premium']
+        fields = ['id', 'first_name', 'last_name', 'username', 'email', 'date_of_birth', 'country', 'is_premium']
 
 
 class EmailUpdateSerializer(serializers.ModelSerializer):
